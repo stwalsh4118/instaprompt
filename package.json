@@ -14,7 +14,8 @@
     "onCommand:instaprompt.addPrompt",
     "onCommand:instaprompt.editPrompt",
     "onCommand:instaprompt.deletePrompt",
-    "onCommand:instaprompt.listPrompts"
+    "onCommand:instaprompt.listPrompts",
+    "onCommand:instaprompt.selectPrompt"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -34,6 +35,17 @@
       {
         "command": "instaprompt.listPrompts",
         "title": "Instaprompt: List Prompts"
+      },
+      {
+        "command": "instaprompt.selectPrompt",
+        "title": "Instaprompt: Select Prompt"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "instaprompt.selectPrompt",
+        "key": "win+alt+l",
+        "mac": "cmd+alt+l"
       }
     ]
   },

@@ -268,6 +268,81 @@ async function handleListPrompts(): Promise<void> {
 	}
 }
 
+/**
+ * Result type for select prompt command
+ */
+interface SelectPromptResult {
+	success: boolean;
+	promptName?: string;
+}
+
+/**
+ * Command handler for selecting a prompt (main quick pick command)
+ * Copies selected prompt content to clipboard and returns success status (Task 2-2)
+ */
+async function handleSelectPrompt(): Promise<SelectPromptResult> {
+	try {
+		// Get all prompts
+		const prompts = getPrompts();
+
+		// Handle empty prompt list gracefully
+		if (prompts.length === 0) {
+			vscode.window.showInformationMessage('No prompts saved yet. Create a prompt first using "Instaprompt: Add Prompt"');
+			return { success: false };
+		}
+
+		// Create QuickPickItems with name as label and truncated content as description
+		const promptItems: vscode.QuickPickItem[] = prompts.map(prompt => {
+			// Get first line of content for description, truncate if needed
+			const firstLine = prompt.content.split('\n')[0];
+			const truncatedContent = firstLine.length > 50 
+				? firstLine.substring(0, 50) + '...' 
+				: firstLine;
+
+			return {
+				label: prompt.name,
+				description: truncatedContent,
+				detail: prompt.category ? `Category: ${prompt.category}` : undefined,
+			};
+		});
+
+		// Show quick pick with fuzzy filtering enabled (matchOnDescription)
+		const selectedPromptItem = await vscode.window.showQuickPick(promptItems, {
+			placeHolder: 'Type to search prompts...',
+			matchOnDescription: true, // Enable fuzzy filtering on description (content)
+		});
+
+		// Handle cancellation
+		if (selectedPromptItem === undefined) {
+			return { success: false };
+		}
+
+		// Find the selected prompt
+		const selectedPrompt = prompts.find(p => p.name === selectedPromptItem.label);
+		if (!selectedPrompt) {
+			vscode.window.showErrorMessage('Selected prompt not found');
+			return { success: false };
+		}
+
+		// Write prompt content to clipboard (Task 2-2)
+		try {
+			await vscode.env.clipboard.writeText(selectedPrompt.content);
+			// Show success notification (Task 2-4)
+			vscode.window.showInformationMessage(`Copied '${selectedPrompt.name}' to clipboard`);
+			return { success: true, promptName: selectedPrompt.name };
+		} catch (clipboardError) {
+			// Handle clipboard write errors gracefully (Task 2-4)
+			const errorMessage = clipboardError instanceof Error ? clipboardError.message : 'Unknown clipboard error';
+			vscode.window.showErrorMessage(`Failed to copy prompt to clipboard: ${errorMessage}`);
+			return { success: false, promptName: selectedPrompt.name };
+		}
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+		vscode.window.showErrorMessage(`Failed to select prompt: ${errorMessage}`);
+		return { success: false };
+	}
+}
+
 export function activate(context: vscode.ExtensionContext) {
 	// Initialize prompt manager with extension context
 	initializePromptManager(context);
@@ -284,11 +359,15 @@ export function activate(context: vscode.ExtensionContext) {
 	// Register List Prompts command
 	const listPromptsCommand = vscode.commands.registerCommand('instaprompt.listPrompts', handleListPrompts);
 
+	// Register Select Prompt command
+	const selectPromptCommand = vscode.commands.registerCommand('instaprompt.selectPrompt', handleSelectPrompt);
+
 	// Add all commands to subscriptions
 	context.subscriptions.push(addPromptCommand);
 	context.subscriptions.push(editPromptCommand);
 	context.subscriptions.push(deletePromptCommand);
 	context.subscriptions.push(listPromptsCommand);
+	context.subscriptions.push(selectPromptCommand);
 }
 
 export function deactivate() {
