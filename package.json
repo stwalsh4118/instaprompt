@@ -1,0 +1,51 @@
+{
+  "name": "instaprompt",
+  "displayName": "Instaprompt",
+  "description": "Manage and reuse AI prompts within VS Code",
+  "version": "0.0.1",
+  "publisher": "instaprompt",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:instaprompt.addPrompt",
+    "onCommand:instaprompt.editPrompt",
+    "onCommand:instaprompt.deletePrompt",
+    "onCommand:instaprompt.listPrompts"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "instaprompt.addPrompt",
+        "title": "Instaprompt: Add Prompt"
+      },
+      {
+        "command": "instaprompt.editPrompt",
+        "title": "Instaprompt: Edit Prompt"
+      },
+      {
+        "command": "instaprompt.deletePrompt",
+        "title": "Instaprompt: Delete Prompt"
+      },
+      {
+        "command": "instaprompt.listPrompts",
+        "title": "Instaprompt: List Prompts"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.107.0",
+    "@vscode/vsce": "^3.7.1",
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "pnpm@10.15.0"
+}
