@@ -21,6 +21,7 @@ const BUILTIN_VARIABLES = {
 	SELECTION: 'SELECTION',
 	CLIPBOARD: 'CLIPBOARD',
 	LINE: 'LINE',
+	TASK: 'TASK',
 } as const;
 
 /**
@@ -150,7 +151,9 @@ export async function resolveTemplate(
 	for (const [variableName, value] of resolvedValues) {
 		// Create a pattern for this specific variable
 		const variablePattern = new RegExp(`\\{${variableName}\\}`, 'g');
-		result = result.replace(variablePattern, value);
+		// Use function replacement to avoid special character interpretation
+		// (e.g., $&, $$, $1, etc. in the replacement string)
+		result = result.replace(variablePattern, () => value);
 	}
 	
 	return result;
@@ -168,6 +171,19 @@ export class VariableResolutionCancelled extends Error {
 		this.name = 'VariableResolutionCancelled';
 		this.variableName = variableName;
 	}
+}
+
+/**
+ * Default handler for unresolved variables - prompts user for input via VS Code input box
+ * @param variableName The name of the variable that needs a value
+ * @returns The user-provided value, or undefined if cancelled
+ */
+export async function promptForVariable(variableName: string): Promise<string | undefined> {
+	return await vscode.window.showInputBox({
+		prompt: `Enter value for {${variableName}}`,
+		placeHolder: variableName,
+		ignoreFocusOut: true,
+	});
 }
 
 // ============================================================================
@@ -234,6 +250,46 @@ async function resolveLine(): Promise<string | undefined> {
 }
 
 /**
+ * Resolve TASK variable - extracts task ID from open task files
+ * Scans visible editors for files matching docs/delivery/*-*.md pattern
+ * @returns The task ID (e.g., "1-3"), or undefined if no task file found
+ */
+async function resolveTask(): Promise<string | undefined> {
+	const TASK_FILE_PATTERN = /^(\d+-\d+)\.md$/;
+	const DELIVERY_PATH_PATTERN = /[/\\]docs[/\\]delivery[/\\]/;
+	
+	// Get all visible editors
+	const visibleEditors = vscode.window.visibleTextEditors;
+	
+	// Filter for task files
+	const taskEditors = visibleEditors.filter(editor => {
+		const filePath = editor.document.uri.fsPath;
+		const fileName = path.basename(filePath);
+		return DELIVERY_PATH_PATTERN.test(filePath) && TASK_FILE_PATTERN.test(fileName);
+	});
+	
+	if (taskEditors.length === 0) {
+		return undefined;
+	}
+	
+	// Prefer active editor if it's a task file
+	const activeEditor = vscode.window.activeTextEditor;
+	if (activeEditor) {
+		const activeMatch = taskEditors.find(e => e === activeEditor);
+		if (activeMatch) {
+			const fileName = path.basename(activeMatch.document.uri.fsPath);
+			const match = fileName.match(TASK_FILE_PATTERN);
+			return match ? match[1] : undefined;
+		}
+	}
+	
+	// Otherwise use the first matching editor
+	const fileName = path.basename(taskEditors[0].document.uri.fsPath);
+	const match = fileName.match(TASK_FILE_PATTERN);
+	return match ? match[1] : undefined;
+}
+
+/**
  * Register all built-in variable resolvers
  * Should be called during extension activation
  */
@@ -261,6 +317,11 @@ export function registerBuiltinResolvers(): void {
 	registerResolver({
 		name: BUILTIN_VARIABLES.LINE,
 		resolve: resolveLine,
+	});
+	
+	registerResolver({
+		name: BUILTIN_VARIABLES.TASK,
+		resolve: resolveTask,
 	});
 }
 
