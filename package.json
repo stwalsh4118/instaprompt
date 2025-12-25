@@ -11,13 +11,9 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:instaprompt.addPrompt",
-    "onCommand:instaprompt.editPrompt",
-    "onCommand:instaprompt.deletePrompt",
-    "onCommand:instaprompt.listPrompts",
-    "onCommand:instaprompt.selectPrompt"
+    "onStartupFinished"
   ],
-  "main": "./out/extension.js",
+  "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
@@ -52,13 +48,16 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "package": "vsce package"
+    "esbuild": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "build": "pnpm run esbuild --minify",
+    "package": "pnpm run build && vsce package"
   },
   "devDependencies": {
-    "@types/node": "^25.0.3",
-    "@types/vscode": "^1.107.0",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.80.0",
     "@vscode/vsce": "^3.7.1",
-    "typescript": "^5.9.3"
+    "esbuild": "^0.27.2",
+    "typescript": "^5.4.0"
   },
   "packageManager": "pnpm@10.15.0",
   "dependencies": {
