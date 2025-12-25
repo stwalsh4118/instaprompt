@@ -12,5 +12,5 @@ This document lists all tasks associated with PBI 3.
 | 3-2 | [Implement Built-in Variable Resolvers](./3-2.md) | Done | Add resolvers for FILENAME, FILEPATH, SELECTION, CLIPBOARD, LINE |
 | 3-3 | [Implement TASK Variable Resolver](./3-3.md) | Done | Parse task ID from open markdown files in docs/delivery/ |
 | 3-4 | [Implement Manual Input Fallback](./3-4.md) | Done | Prompt user for values when auto-resolution fails |
-| 3-5 | [Integrate Template Engine with Select Command](./3-5.md) | Proposed | Process templates before copying to clipboard |
+| 3-5 | [Integrate Template Engine with Select Command](./3-5.md) | Done | Process templates before copying to clipboard |
 
