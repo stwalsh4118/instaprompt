@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { initializePromptManager, addPrompt, getPrompts, updatePrompt, deletePrompt } from './promptManager';
 import { PromptUpdate } from './types';
+import { resolveTemplate, promptForVariable, VariableResolutionCancelled, registerBuiltinResolvers } from './templateEngine';
 
 /**
  * Command handler for adding a new prompt
@@ -324,9 +325,25 @@ async function handleSelectPrompt(): Promise<SelectPromptResult> {
 			return { success: false };
 		}
 
-		// Write prompt content to clipboard (Task 2-2)
+		// Resolve template variables before copying (Task 3-5)
+		let resolvedContent: string;
 		try {
-			await vscode.env.clipboard.writeText(selectedPrompt.content);
+			resolvedContent = await resolveTemplate(selectedPrompt.content, promptForVariable);
+		} catch (error) {
+			// Handle cancellation gracefully - user cancelled variable input
+			if (error instanceof VariableResolutionCancelled) {
+				// Return silently without copying anything
+				return { success: false };
+			}
+			// Handle other resolution errors
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+			vscode.window.showErrorMessage(`Failed to resolve template variables: ${errorMessage}`);
+			return { success: false, promptName: selectedPrompt.name };
+		}
+
+		// Write resolved prompt content to clipboard (Task 2-2, 3-5)
+		try {
+			await vscode.env.clipboard.writeText(resolvedContent);
 			// Show success notification (Task 2-4)
 			vscode.window.showInformationMessage(`Copied '${selectedPrompt.name}' to clipboard`);
 			return { success: true, promptName: selectedPrompt.name };
@@ -346,6 +363,9 @@ async function handleSelectPrompt(): Promise<SelectPromptResult> {
 export function activate(context: vscode.ExtensionContext) {
 	// Initialize prompt manager with extension context
 	initializePromptManager(context);
+
+	// Register built-in template variable resolvers
+	registerBuiltinResolvers();
 
 	// Register Add Prompt command
 	const addPromptCommand = vscode.commands.registerCommand('instaprompt.addPrompt', handleAddPrompt);
