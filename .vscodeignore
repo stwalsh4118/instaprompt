@@ -1,14 +1,20 @@
 .vscode/**
 .vscode-test/**
 src/**
+out/**
 tsconfig.json
 .gitignore
 .eslintrc.json
 **/*.map
 **/*.ts
-!out/**/*.js
+!dist/**/*.js
 node_modules/**
 *.vsix
 *.md
 !README.md
+docs/**
+.cursorrules
+pnpm-lock.yaml
+
+
 
