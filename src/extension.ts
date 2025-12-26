@@ -344,6 +344,23 @@ async function handleSelectPrompt(): Promise<SelectPromptResult> {
 		// Write resolved prompt content to clipboard (Task 2-2, 3-5)
 		try {
 			await vscode.env.clipboard.writeText(resolvedContent);
+			
+			// Attempt auto-paste after a brief delay to allow focus to return
+			// This works reliably in text editors and may work in some input fields
+			setTimeout(async () => {
+				try {
+					// Try the standard paste command first (works in editors)
+					await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+				} catch {
+					// If that fails, try a generic paste command
+					try {
+						await vscode.commands.executeCommand('paste');
+					} catch {
+						// Silently ignore - user can still paste manually
+					}
+				}
+			}, 100);
+			
 			// Show success notification (Task 2-4)
 			vscode.window.showInformationMessage(`Copied '${selectedPrompt.name}' to clipboard`);
 			return { success: true, promptName: selectedPrompt.name };
