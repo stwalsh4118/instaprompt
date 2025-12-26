@@ -12,7 +12,7 @@
 
 ## ✨ Features
 
-- **🚀 Instant Access** — Press a hotkey to open your prompt library and copy to clipboard
+- **🚀 Instant Access** — Press a hotkey to open your prompt library, copy to clipboard, and auto-paste
 - **📝 Template Variables** — Auto-fill context like `{FILENAME}`, `{SELECTION}`, or `{TASK}`
 - **💾 Persistent Storage** — Prompts are saved globally and available across all workspaces
 - **🔍 Fuzzy Search** — Quickly filter prompts by typing in the quick pick
@@ -50,13 +50,13 @@ pnpm run build
 
 1. **Add a prompt**: Open Command Palette (`Ctrl+Shift+P`) → `Instaprompt: Add Prompt`
 2. **Select a prompt**: Press `Win+Alt+L` (or `Cmd+Alt+L` on Mac)
-3. **Paste**: The prompt is now in your clipboard — paste it anywhere!
+3. **Done!**: The prompt is copied to clipboard and auto-pasted into text editors. For other inputs (like chat boxes), press `Ctrl+V` / `Cmd+V` to paste.
 
 ### Commands
 
 | Command | Description | Keybinding |
 |---------|-------------|------------|
-| `Instaprompt: Select Prompt` | Open prompt picker and copy to clipboard | `Win+Alt+L` / `Cmd+Alt+L` |
+| `Instaprompt: Select Prompt` | Open prompt picker, copy to clipboard, and auto-paste | `Win+Alt+L` / `Cmd+Alt+L` |
 | `Instaprompt: Add Prompt` | Create a new prompt | — |
 | `Instaprompt: Edit Prompt` | Modify an existing prompt | — |
 | `Instaprompt: Delete Prompt` | Remove a prompt | — |
@@ -166,4 +166,5 @@ MIT
 <p align="center">
   Made with ❤️ for developers who talk to AI
 </p>
+
 
