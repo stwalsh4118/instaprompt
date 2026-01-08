@@ -680,21 +680,37 @@ Each API spec file must include the following sections as applicable:
 
 ## 6.6 Spec Loading Requirements
 
-> Rationale: Ensures AI agents have context about existing APIs before implementing new functionality, preventing duplication.
+> Rationale: Ensures AI agents have context about existing APIs before implementing new functionality, preventing duplication, while optimizing context usage by loading only relevant specs.
 
 - When starting work on a task (see Section 4.6 "start_work"):
-  - Identify which systems/services the task will modify
-  - Load the relevant API specification files from `docs/api-specs/` into context before beginning implementation
+  1. Read `docs/api-specs/README.md` to understand available specs and their organization
+  2. Identify which specific spec files are relevant to the task based on:
+     - Components being modified (load component-specific specs)
+     - APIs being called (load API client specs)
+     - State management involved (load state specs)
+     - Styling changes (load styling/design token specs)
+  3. Load ONLY the specific relevant spec files
+  4. Do NOT load specs for unrelated domains
 - Consult specs to determine if functionality already exists before creating new implementations
 - If similar functionality exists, reuse or extend rather than recreate
+
+**Examples**:
+- Task modifying ProductGrid: Load `components/maps-components.md` only
+- Task adding new API endpoint: Load `api-clients/woocommerce.md` + `data/types.md` + `api-clients/tanstack-query.md`
+- Task updating styling: Load `core/styling.md` + `core/design-tokens.md` only
+- Task modifying filter logic: Load `state/hooks.md` + `data/types.md` only
+- Task creating new screen: Load relevant screen spec as reference + relevant component specs
 
 ## 6.7 Infrastructure Components and Reusable Code
 
 > Rationale: Ensures infrastructure components and foundational code are documented and reused, not recreated.
 
 - **Infrastructure Scope**: Internal packages that provide cross-cutting concerns (logging, configuration, middleware, database connections, etc.) are considered infrastructure
-- **Documentation Requirement**: All infrastructure components MUST be documented in `docs/api-specs/infrastructure/infrastructure-api.md`
-- **Reuse Mandate**: ALWAYS check `docs/api-specs/infrastructure/` before implementing any infrastructure functionality
+- **Documentation Requirement**: All infrastructure components MUST be documented in the appropriate spec files:
+  - Core infrastructure: `docs/api-specs/core/` (project structure, styling, design tokens)
+  - API clients: `docs/api-specs/api-clients/` (TanStack Query, WooCommerce, WordPress)
+  - State management: `docs/api-specs/state/` (Zustand stores, custom hooks)
+- **Reuse Mandate**: ALWAYS check relevant spec files in `docs/api-specs/` before implementing any infrastructure functionality. Use the README.md index to find the right spec files.
 - **Examples of Infrastructure**:
   - Logging systems (e.g., zerolog logger package)
   - Configuration management
@@ -702,8 +718,11 @@ Each API spec file must include the following sections as applicable:
   - HTTP middleware (authentication, CORS, request logging)
   - Error handling utilities
   - Common validation functions
+  - Styling systems (NativeWind, design tokens)
+  - State management (Zustand stores)
+  - API clients (TanStack Query hooks)
 - **Rule**: If infrastructure exists, ALWAYS import and use it. NEVER recreate similar functionality
-- **Updates**: When tasks create or modify infrastructure components, update `docs/api-specs/infrastructure/infrastructure-api.md`
+- **Updates**: When tasks create or modify infrastructure components, update the relevant spec files in `docs/api-specs/` (use README.md to identify which files to update)
 
 ## 6.8 API Specification Template Example
 
