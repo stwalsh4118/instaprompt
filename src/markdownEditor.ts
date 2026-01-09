@@ -34,29 +34,24 @@ let currentPanel: vscode.WebviewPanel | undefined = undefined;
 let currentOptions: MarkdownEditorOptions | undefined = undefined;
 
 /**
- * Get the webview content HTML with CodeMirror 6 and marked library
+ * Get the webview content HTML with textarea editor and marked preview
  */
 function getWebviewContent(webview: vscode.Webview, initialContent: string = ''): string {
-	// CDN URLs for external libraries
-	const cdnBase = 'https://cdn.jsdelivr.net';
-	const codemirrorViewUrl = `${cdnBase}/npm/@codemirror/view@6.26.0/dist/index.js`;
-	const codemirrorStateUrl = `${cdnBase}/npm/@codemirror/state@6.4.1/dist/index.js`;
-	const codemirrorLangMarkdownUrl = `${cdnBase}/npm/@codemirror/lang-markdown@6.3.2/dist/index.js`;
-	const codemirrorThemeUrl = `${cdnBase}/npm/@codemirror/theme-one-dark@6.1.2/dist/index.js`;
-	const markedUrl = `${cdnBase}/npm/marked@14.1.0/marked.min.js`;
+	const markedUrl = 'https://cdn.jsdelivr.net/npm/marked@14.1.0/marked.min.js';
 
 	// Escape initial content for embedding in HTML
 	const escapedContent = initialContent
-		.replace(/\\/g, '\\\\')
-		.replace(/`/g, '\\`')
-		.replace(/\${/g, '\\${');
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;');
 
 	return `<!DOCTYPE html>
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src ${webview.cspSource} https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; style-src ${webview.cspSource} 'unsafe-inline'; connect-src ${webview.cspSource} https://cdn.jsdelivr.net;">
+	<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src ${webview.cspSource} https://cdn.jsdelivr.net 'unsafe-inline'; style-src ${webview.cspSource} 'unsafe-inline';">
 	<title>Markdown Editor</title>
 	<style>
 		* {
@@ -108,6 +103,16 @@ function getWebviewContent(webview: vscode.Webview, initialContent: string = '')
 			background-color: var(--vscode-button-secondaryHoverBackground);
 		}
 
+		.toolbar .spacer {
+			flex: 1;
+		}
+
+		.toolbar .hint {
+			color: var(--vscode-descriptionForeground);
+			font-size: 12px;
+			align-self: center;
+		}
+
 		.container {
 			display: flex;
 			flex: 1;
@@ -122,11 +127,31 @@ function getWebviewContent(webview: vscode.Webview, initialContent: string = '')
 			overflow: hidden;
 		}
 
+		#editor {
+			flex: 1;
+			width: 100%;
+			padding: 12px;
+			border: none;
+			outline: none;
+			resize: none;
+			font-family: var(--vscode-editor-font-family);
+			font-size: var(--vscode-editor-font-size);
+			line-height: 1.5;
+			color: var(--vscode-editor-foreground);
+			background-color: var(--vscode-editor-background);
+			tab-size: 4;
+		}
+
+		#editor::placeholder {
+			color: var(--vscode-input-placeholderForeground);
+		}
+
 		.preview-container {
 			flex: 1;
 			overflow-y: auto;
 			padding: 16px;
 			background-color: var(--vscode-editor-background);
+			text-align: left;
 		}
 
 		.preview-container h1,
@@ -139,6 +164,12 @@ function getWebviewContent(webview: vscode.Webview, initialContent: string = '')
 			margin-bottom: 16px;
 			font-weight: 600;
 			line-height: 1.25;
+		}
+
+		.preview-container h1:first-child,
+		.preview-container h2:first-child,
+		.preview-container h3:first-child {
+			margin-top: 0;
 		}
 
 		.preview-container h1 {
@@ -214,9 +245,12 @@ function getWebviewContent(webview: vscode.Webview, initialContent: string = '')
 			font-weight: 600;
 		}
 
-		#editor {
-			flex: 1;
-			overflow: hidden;
+		.preview-container a {
+			color: var(--vscode-textLink-foreground);
+		}
+
+		.preview-container a:hover {
+			color: var(--vscode-textLink-activeForeground);
 		}
 
 		.empty-preview {
@@ -225,163 +259,127 @@ function getWebviewContent(webview: vscode.Webview, initialContent: string = '')
 			text-align: center;
 			margin-top: 48px;
 		}
+
+		#preview {
+			text-align: left;
+		}
+
+		#preview.empty-preview {
+			text-align: center;
+		}
 	</style>
 </head>
 <body>
 	<div class="toolbar">
 		<button id="save-btn">Save</button>
 		<button id="cancel-btn" class="secondary">Cancel</button>
+		<span class="spacer"></span>
+		<span class="hint">Markdown supported</span>
 	</div>
 	<div class="container">
 		<div class="editor-container">
-			<div id="editor"></div>
+			<textarea id="editor" placeholder="Enter your prompt content here...">${escapedContent}</textarea>
 		</div>
 		<div class="preview-container">
 			<div id="preview" class="empty-preview">Preview will appear here...</div>
 		</div>
 	</div>
 
-	<script type="module">
+	<script src="${markedUrl}"></script>
+	<script>
 		const vscode = acquireVsCodeApi();
-		const editorElement = document.getElementById('editor');
-		const previewElement = document.getElementById('preview');
+		const editor = document.getElementById('editor');
+		const preview = document.getElementById('preview');
 		const saveBtn = document.getElementById('save-btn');
 		const cancelBtn = document.getElementById('cancel-btn');
 
-		let editor = null;
-		let updatePreviewFn = null;
+		// Update preview function
+		function updatePreview(text) {
+			if (!text || text.trim() === '') {
+				preview.className = 'empty-preview';
+				preview.innerHTML = 'Preview will appear here...';
+				return;
+			}
 
-		async function initEditor() {
 			try {
-				// Import CodeMirror 6 modules as ES modules
-				const { EditorView } = await import('${codemirrorViewUrl}');
-				const { EditorState } = await import('${codemirrorStateUrl}');
-				const { markdown } = await import('${codemirrorLangMarkdownUrl}');
-				const { oneDark } = await import('${codemirrorThemeUrl}');
-				
-				// Load marked library (it's a UMD module, so we'll use it globally)
-				const markedScript = document.createElement('script');
-				markedScript.src = '${markedUrl}';
-				await new Promise((resolve, reject) => {
-					markedScript.onload = resolve;
-					markedScript.onerror = reject;
-					document.head.appendChild(markedScript);
-				});
-
-				// Check if VS Code theme is dark
-				const isDark = document.body.classList.contains('vscode-dark') || 
-				               document.body.classList.contains('vscode-high-contrast-dark');
-				
-				// Create editor
-				editor = new EditorView({
-					state: EditorState.create({
-						doc: \`${escapedContent}\`,
-						extensions: [
-							markdown(),
-							EditorView.updateListener.of((update) => {
-								if (update.docChanged) {
-									updatePreview(update.state.doc.toString());
-								}
-							}),
-							EditorView.theme({
-								'&': {
-									height: '100%',
-								},
-								'.cm-content': {
-									padding: '12px',
-									minHeight: '100%',
-									fontFamily: 'var(--vscode-editor-font-family)',
-									fontSize: 'var(--vscode-editor-font-size)',
-									color: 'var(--vscode-editor-foreground)',
-									backgroundColor: 'var(--vscode-editor-background)',
-								},
-								'.cm-scroller': {
-									overflow: 'auto',
-								},
-								'.cm-focused': {
-									outline: 'none',
-								},
-							}),
-							...(isDark ? [oneDark] : []),
-						],
-					}),
-					parent: editorElement,
-				});
-
-				// Update preview function (needs to be accessible to message handler)
-				updatePreviewFn = function(markdownText) {
-					if (!markdownText || markdownText.trim() === '') {
-						previewElement.innerHTML = '<div class="empty-preview">Preview will appear here...</div>';
-						return;
-					}
-
-					try {
-						// Use marked library (loaded globally)
-						if (typeof marked !== 'undefined') {
-							const html = marked.parse(markdownText, {
-								breaks: true,
-								gfm: true,
-							});
-							previewElement.innerHTML = html;
-						} else {
-							previewElement.innerHTML = '<div class="empty-preview">Markdown parser not loaded</div>';
-						}
-					} catch (error) {
-						previewElement.innerHTML = '<div class="empty-preview">Error rendering preview</div>';
-						console.error('Preview error:', error);
-					}
-				};
-
-				// Initial preview update
-				updatePreviewFn(\`${escapedContent}\`);
-
-				// Save button handler
-				saveBtn.addEventListener('click', () => {
-					const content = editor.state.doc.toString();
-					vscode.postMessage({
-						type: 'save',
-						content: content,
+				if (typeof marked !== 'undefined') {
+					preview.className = '';
+					preview.innerHTML = marked.parse(text, {
+						breaks: true,
+						gfm: true,
 					});
-				});
-
-				// Cancel button handler
-				cancelBtn.addEventListener('click', () => {
-					vscode.postMessage({
-						type: 'cancel',
-					});
-				});
-
-				// Notify extension that webview is ready
-				vscode.postMessage({
-					type: 'ready',
-				});
-
+				} else {
+					preview.className = 'empty-preview';
+					preview.innerHTML = 'Markdown parser not loaded';
+				}
 			} catch (error) {
-				console.error('Failed to initialize editor:', error);
-				previewElement.innerHTML = '<div class="empty-preview">Failed to load editor. Please refresh.</div>';
+				preview.className = 'empty-preview';
+				preview.innerHTML = 'Error rendering preview';
+				console.error('Preview error:', error);
 			}
 		}
 
-		// Handle messages from extension
-		window.addEventListener('message', (event) => {
-			const message = event.data;
-			if (message.type === 'loadContent' && editor && updatePreviewFn) {
-				// Update editor content if editor is already initialized
-				const transaction = editor.state.update({
-					changes: {
-						from: 0,
-						to: editor.state.doc.length,
-						insert: message.content || '',
-					},
-				});
-				editor.dispatch(transaction);
-				// Update preview
-				updatePreviewFn(message.content || '');
+		// Initial preview
+		updatePreview(editor.value);
+
+		// Update preview on input
+		editor.addEventListener('input', function() {
+			updatePreview(this.value);
+		});
+
+		// Save button
+		saveBtn.addEventListener('click', function() {
+			vscode.postMessage({
+				type: 'save',
+				content: editor.value,
+			});
+		});
+
+		// Cancel button
+		cancelBtn.addEventListener('click', function() {
+			vscode.postMessage({
+				type: 'cancel',
+			});
+		});
+
+		// Keyboard shortcuts
+		editor.addEventListener('keydown', function(e) {
+			// Ctrl/Cmd + S to save
+			if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+				e.preventDefault();
+				saveBtn.click();
+			}
+			// Escape to cancel
+			if (e.key === 'Escape') {
+				cancelBtn.click();
+			}
+			// Tab key inserts tab character
+			if (e.key === 'Tab') {
+				e.preventDefault();
+				const start = this.selectionStart;
+				const end = this.selectionEnd;
+				this.value = this.value.substring(0, start) + '\\t' + this.value.substring(end);
+				this.selectionStart = this.selectionEnd = start + 1;
+				updatePreview(this.value);
 			}
 		});
 
-		// Initialize editor when page loads
-		initEditor();
+		// Handle messages from extension
+		window.addEventListener('message', function(event) {
+			const message = event.data;
+			if (message.type === 'loadContent') {
+				editor.value = message.content || '';
+				updatePreview(editor.value);
+			}
+		});
+
+		// Notify extension that webview is ready
+		vscode.postMessage({
+			type: 'ready',
+		});
+
+		// Focus the editor
+		editor.focus();
 	</script>
 </body>
 </html>`;
@@ -495,4 +493,3 @@ export function closeMarkdownEditor(): void {
 		currentOptions = undefined;
 	}
 }
-
