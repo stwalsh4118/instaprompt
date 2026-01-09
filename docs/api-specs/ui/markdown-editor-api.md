@@ -33,9 +33,10 @@ Open a webview panel with markdown editor and live preview.
   - `options`: Editor configuration options
 - **Behavior**:
   - Creates or reveals existing panel (only one can be open at a time)
-  - Uses CodeMirror 6 for editing
+  - Uses textarea for editing (simplified implementation for reliability)
   - Uses marked library for preview rendering
   - Supports VS Code theme (dark/light)
+  - Live preview updates as user types
 
 ### Close Markdown Editor
 
@@ -76,8 +77,12 @@ interface WebviewToExtensionMessage {
 - **Split View**: Editor on left, live preview on right
 - **Markdown Support**: Full markdown syntax with GFM extensions
 - **Theme Aware**: Automatically adapts to VS Code theme
-- **Auto-save**: Content updates preview in real-time as user types
+- **Live Preview**: Content updates preview in real-time as user types
 - **Toolbar**: Save and Cancel buttons
+- **Keyboard Shortcuts**:
+  - `Ctrl+S` / `Cmd+S`: Save
+  - `Escape`: Cancel
+  - `Tab`: Insert tab character
 
 ## Usage Examples
 
@@ -121,14 +126,16 @@ if (prompt) {
 
 ## Implementation Details
 
-- **Editor**: CodeMirror 6 with markdown language support
-- **Preview**: marked.js library with GFM extensions
-- **CDN**: Libraries loaded from jsdelivr.net
+- **Editor**: Textarea-based editor (simplified for reliability, avoids CDN dependency issues)
+- **Preview**: marked.js library with GFM extensions, loaded from jsdelivr.net CDN
+- **CDN**: marked.js loaded from cdn.jsdelivr.net
 - **CSP**: Content Security Policy configured for CDN resources
 - **Panel Management**: Single panel instance, reused if already open
+- **Note**: Originally attempted CodeMirror 6 but encountered module resolution issues with CDN loading. Textarea provides reliable functionality with live markdown preview.
 
 ## Related APIs
 
 - [Prompt Manager API](../core/prompt-manager-api.md) - Used in save callbacks
 - [Commands API](../extension/commands-api.md) - Commands may use this editor
+
 

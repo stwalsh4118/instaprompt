@@ -26,9 +26,10 @@ Create a new prompt.
 - **Handler**: `handleAddPrompt()`
 - **Flow**:
   1. Prompts for prompt name (validated, cannot be empty)
-  2. Prompts for prompt content (multiline)
-  3. Saves prompt via `addPrompt()`
-  4. Shows success notification
+  2. Opens webview markdown editor with empty content
+  3. User edits content in markdown editor
+  4. On save: saves prompt via `addPrompt()` and shows success notification
+  5. On cancel: closes editor without saving
 
 #### instaprompt.editPrompt
 
@@ -39,9 +40,12 @@ Edit an existing prompt.
   1. Shows quick pick of all prompts
   2. User selects prompt to edit
   3. Shows options: Name, Content, or Both
-  4. Prompts for new values based on selection
-  5. Updates prompt via `updatePrompt()`
-  6. Shows success notification
+  4. Based on selection:
+     - **Name only**: Prompts for new name via input box, updates prompt
+     - **Content**: Opens webview markdown editor with existing content
+     - **Both**: Prompts for new name first, then opens webview editor with existing content
+  5. On save: Updates prompt via `updatePrompt()` and shows success notification
+  6. On cancel: Closes editor without saving
 
 #### instaprompt.deletePrompt
 
@@ -126,4 +130,5 @@ if (result?.success) {
 
 - [Prompt Manager API](../core/prompt-manager-api.md) - Used by all commands for storage operations
 - [Template Engine API](../core/template-engine-api.md) - Used by `selectPrompt` for variable resolution
+- [Markdown Editor API](../ui/markdown-editor-api.md) - Used by `addPrompt` and `editPrompt` for content editing
 
